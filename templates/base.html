@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Upper Hill Dental Centre{% endblock %}</title>
+    <!-- Main stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Auth pages styling -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    <!-- Chatbot widget styling -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+    <!-- Per-page extra styles -->
+    {% block head %}{% endblock %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<!-- PAGE CONTENT — navbar removed; logo now lives in the sidebar -->
+<main>
+    {% block content %}
+    {% endblock %}
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const dropdowns = document.querySelectorAll(".dropdown");
+    dropdowns.forEach(dropdown => {
+        const button = dropdown.querySelector(".btn-edit");
+        const menu = dropdown.querySelector(".dropdown-menu");
+        // Toggle dropdown on button click
+        button.addEventListener("click", function(e) {
+            e.stopPropagation();
+            menu.classList.toggle("show");
+        });
+    });
+    // Close dropdowns when clicking outside
+    document.addEventListener("click", function() {
+        document.querySelectorAll(".dropdown-menu.show").forEach(menu => {
+            menu.classList.remove("show");
+        });
+    });
+});
+</script>
+
+</body>
+</html>

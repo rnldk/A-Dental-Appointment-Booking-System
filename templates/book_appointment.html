@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Book Appointment{% endblock %}
+
+{% block content %}
+<h2>Book Appointment</h2>
+
+<p>
+Clinic Hours:<br>
+Mon–Fri: 7:30am – 5:30pm<br>
+Saturday: 7:30am – 2:00pm<br>
+Sunday: Closed
+</p>
+
+{% if error %}
+<p style="color:red;">{{ error }}</p>
+{% endif %}
+
+
+<form method="POST">
+    <label>Select Dentist</label><br>
+    <select name="dentist_id" required>
+        {% for dentist in dentists %}
+            <option value="{{ dentist.id }}">{{ dentist.full_name }}</option>
+        {% endfor %}
+    </select><br><br>
+
+    <label>Appointment Date</label><br>
+    <input type="date" name="appointment_date" required><br><br>
+
+    <label>Appointment Time</label><br>
+    <input type="time" name="appointment_time" required><br><br>
+
+    <button type="submit">Book Appointment</button>
+</form>
+{% endblock %}

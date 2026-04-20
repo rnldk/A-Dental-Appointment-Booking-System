@@ -1,0 +1,663 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+
+<style>
+    body { margin: 0; }
+
+    /* ── Layout Shell ── */
+    .shell {
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+        font-family: 'Segoe UI', sans-serif;
+        position: relative;
+    }
+
+    /* ══════════════════════════════
+       SIDEBAR LOGO
+    ══════════════════════════════ */
+    .sidebar-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 18px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        flex-shrink: 0;
+        background: rgba(255,255,255,0.06);
+    }
+
+    .sidebar-logo-img {
+        width: 100%;
+        max-width: 180px;
+        height: auto;
+        object-fit: contain;
+        border-radius: 6px;
+        transition: max-width 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .sidebar.collapsed .sidebar-logo { padding: 14px 8px; }
+    .sidebar.collapsed .sidebar-logo-img { max-width: 40px; border-radius: 8px; }
+
+    /* ══════════════════════════════
+       SIDEBAR
+    ══════════════════════════════ */
+    .sidebar {
+        width: 260px;
+        min-width: 260px;
+        flex-shrink: 0;
+        background: linear-gradient(180deg, #3b1f5e 0%, #5a2d82 60%, #764ba2 100%);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.25);
+        z-index: 10;
+        transition: width 0.3s cubic-bezier(0.4,0,0.2,1), min-width 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .sidebar.collapsed { width: 64px; min-width: 64px; }
+
+    .nav-link span, .logout-btn span, .profile-info, .nav-label {
+        transition: opacity 0.2s ease, max-width 0.3s ease;
+        overflow: hidden;
+        white-space: nowrap;
+        max-width: 200px;
+    }
+
+    .sidebar.collapsed .profile-info,
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .nav-link span,
+    .sidebar.collapsed .logout-btn span { opacity: 0; max-width: 0; }
+
+    .sidebar.collapsed .sidebar-profile { justify-content: center; padding: 20px 8px; gap: 0; }
+    .sidebar.collapsed .nav-link        { justify-content: center; padding: 11px 0; gap: 0; }
+    .sidebar.collapsed .logout-btn      { justify-content: center; padding: 11px 0; gap: 0; }
+    .sidebar.collapsed .sidebar-nav     { padding: 20px 8px; align-items: center; }
+    .sidebar.collapsed .sidebar-footer  { display: flex; justify-content: center; }
+
+    /* Toggle */
+    .sidebar-toggle {
+        position: absolute;
+        top: 22px; left: 246px;
+        width: 28px; height: 28px;
+        background: white; border: none; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+        z-index: 20; padding: 0;
+        transition: left 0.3s cubic-bezier(0.4,0,0.2,1), transform 0.2s;
+    }
+    .sidebar-toggle:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.3); transform: scale(1.1); }
+    .shell.sidebar-collapsed .sidebar-toggle { left: 50px; }
+    .toggle-arrow { display: flex; align-items: center; justify-content: center; color: #764ba2; transition: transform 0.3s ease; }
+    .shell.sidebar-collapsed .toggle-arrow { transform: rotate(180deg); }
+
+    /* Profile */
+    .sidebar-profile {
+        padding: 22px 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.12);
+        display: flex; align-items: center; gap: 14px;
+    }
+    .profile-avatar {
+        width: 50px; height: 50px;
+        background: rgba(255,255,255,0.18);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 22px; font-weight: 700; color: white;
+        border: 2px solid rgba(255,255,255,0.35);
+        flex-shrink: 0;
+    }
+    .profile-name { color: white; font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .profile-role { color: rgba(255,255,255,0.6); font-size: 12px; margin-top: 2px; }
+
+    /* Nav */
+    .sidebar-nav { flex: 1; padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .nav-label { font-size: 10px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,0.4); padding: 10px 10px 6px; }
+    .nav-link {
+        display: flex; align-items: center; gap: 12px;
+        padding: 11px 14px; border-radius: 10px;
+        color: rgba(255,255,255,0.75); text-decoration: none;
+        font-size: 14px; font-weight: 500;
+        transition: background 0.2s, color 0.2s, transform 0.15s;
+    }
+    .nav-link:hover { background: rgba(255,255,255,0.1); color: white; transform: translateX(3px); }
+    .nav-link.active { background: rgba(255,255,255,0.18); color: white; font-weight: 700; box-shadow: inset 3px 0 0 #e6b7c6; }
+    .nav-link svg { flex-shrink: 0; opacity: 0.85; }
+
+    /* Logout */
+    .sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.12); }
+    .logout-btn {
+        display: flex; align-items: center; gap: 12px;
+        padding: 11px 14px; border-radius: 10px;
+        color: rgba(255,255,255,0.65); text-decoration: none;
+        font-size: 14px; font-weight: 500;
+        width: 100%; background: transparent; border: none; cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+    }
+    .logout-btn:hover { background: rgba(245,87,108,0.2); color: #f5aab5; }
+
+    /* ══════════════════════════════
+       MAIN CONTENT
+    ══════════════════════════════ */
+    .main-content {
+        flex: 1; background: #f4f1f9;
+        height: 100%; overflow-y: auto;
+        padding: 30px 36px 50px;
+        min-width: 0; box-sizing: border-box;
+    }
+
+    /* Topbar */
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    .topbar-left h1 { margin: 0; font-size: 24px; font-weight: 700; color: #2d1b4e; }
+    .topbar-left p  { margin: 4px 0 0; color: #8b7aaa; font-size: 14px; }
+
+    /* Stats row */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 14px;
+        padding: 22px 20px;
+        display: flex; align-items: center; gap: 16px;
+        box-shadow: 0 4px 16px rgba(118,75,162,0.09);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(118,75,162,0.16); }
+
+    .stat-icon {
+        width: 52px; height: 52px;
+        background: #f0ebfa;
+        border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .stat-number { font-size: 28px; font-weight: 800; color: #2d1b4e; line-height: 1; }
+    .stat-label  { font-size: 12px; color: #8b7aaa; font-weight: 600; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Section title */
+    .section-title {
+        font-size: 16px; font-weight: 700; color: #2d1b4e;
+        margin: 0 0 14px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .section-title .dot { width: 8px; height: 8px; border-radius: 50%; background: #764ba2; display: inline-block; }
+
+    /* Two-column grid */
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+
+    @media (max-width: 900px) { .content-grid { grid-template-columns: 1fr; } }
+
+    /* Appointment cards */
+    .appt-list {
+        background: white;
+        border-radius: 14px;
+        padding: 6px;
+        box-shadow: 0 4px 16px rgba(118,75,162,0.09);
+    }
+
+    .appt-item {
+        display: flex; align-items: center;
+        padding: 12px 14px;
+        border-radius: 10px;
+        gap: 12px;
+        transition: background 0.15s;
+    }
+    .appt-item:hover { background: #faf7fe; }
+
+    .appt-item-info { flex: 1; min-width: 0; }
+    .appt-item-info .name  { font-size: 14px; font-weight: 600; color: #2d1b4e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .appt-item-info .meta  { font-size: 12px; color: #8b7aaa; margin-top: 2px; }
+
+    .badge {
+        display: inline-block; padding: 3px 10px;
+        border-radius: 20px; font-size: 11px; font-weight: 700;
+        white-space: nowrap;
+    }
+    .badge-approved  { background: #d4edda; color: #155724; }
+    .badge-booked    { background: #fff3cd; color: #856404; }
+    .badge-cancelled { background: #f8d7da; color: #721c24; }
+
+    .empty-state {
+        text-align: center; padding: 30px 20px;
+        color: #b0a0c8; font-size: 14px;
+        border: 2px dashed #e0d5f0;
+        border-radius: 12px;
+    }
+
+    /* Approve button */
+    .btn-approve {
+        background: linear-gradient(135deg, #764ba2, #5a2d82);
+        color: white; border: none; border-radius: 8px;
+        padding: 7px 14px; font-size: 12px; font-weight: 700;
+        cursor: pointer; white-space: nowrap;
+        box-shadow: 0 3px 10px rgba(118,75,162,0.3);
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-approve:hover { transform: translateY(-2px); box-shadow: 0 5px 16px rgba(118,75,162,0.42); }
+
+    /* Approve all button */
+    .btn-approve-all {
+        background: white; color: #764ba2;
+        border: 1.5px solid #e0d5f0; border-radius: 10px;
+        padding: 9px 18px; font-size: 13px; font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(118,75,162,0.08);
+        transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+    .btn-approve-all:hover { background: #f5f0fb; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(118,75,162,0.15); }
+
+    /* Pending section header row */
+    .pending-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+
+    /* ══════════════════════════════
+       MODALS
+    ══════════════════════════════ */
+    .modal {
+        display: none; position: fixed; z-index: 1000;
+        left: 0; top: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.55);
+        animation: fadeIn 0.25s ease;
+    }
+    .modal.active { display: flex; justify-content: center; align-items: center; }
+
+    .modal-content {
+        background: white; padding: 40px 36px;
+        border-radius: 16px; width: 90%; max-width: 420px;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.25);
+        animation: slideUp 0.3s ease; position: relative;
+        text-align: center;
+    }
+
+    .close-modal {
+        position: absolute; top: 14px; right: 18px;
+        font-size: 26px; font-weight: bold; color: #aaa; cursor: pointer;
+        transition: color 0.2s;
+    }
+    .close-modal:hover { color: #333; }
+
+    /* ── Charts ── */
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-top: 24px;
+    }
+    @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .chart-card {
+        background: white; border-radius: 14px;
+        padding: 22px 24px;
+        box-shadow: 0 4px 16px rgba(118,75,162,0.09);
+    }
+    .chart-card-title {
+        font-size: 14px; font-weight: 700; color: #2d1b4e;
+        margin: 0 0 18px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .chart-card-title .dot { width: 8px; height: 8px; border-radius: 50%; background: #764ba2; display: inline-block; }
+
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    @media (max-width: 640px) {
+        .sidebar { display: none; }
+        .main-content { padding: 20px 16px 40px; }
+    }
+</style>
+
+<!-- Chart.js from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<div class="shell">
+
+    <!-- ══════════ SIDEBAR ══════════ -->
+    <aside class="sidebar" id="sidebar">
+
+        <!-- Toggle -->
+        <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+            <span class="toggle-arrow">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            </span>
+        </button>
+
+        <!-- Logo -->
+        <div class="sidebar-logo">
+            <img src="/static/images/upperhill-logo.jpg" alt="Upper Hill Dental Centre" class="sidebar-logo-img">
+        </div>
+
+        <!-- Profile -->
+        <div class="sidebar-profile">
+            <div class="profile-avatar">{{ session.name[0]|upper }}</div>
+            <div class="profile-info">
+                <div class="profile-name">{{ session.name }}</div>
+                <div class="profile-role">Administrator</div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
+            <div class="nav-label">Menu</div>
+
+            <a href="{{ url_for('admin_dashboard') }}" class="nav-link active" title="Dashboard">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="{{ url_for('admin_appointments') }}" class="nav-link" title="Manage Appointments">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>Manage Appointments</span>
+            </a>
+
+            <a href="{{ url_for('admin_registrations') }}" class="nav-link" title="Registrations">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>Registrations</span>
+            </a>
+
+            <a href="{{ url_for('admin_reports') }}" class="nav-link" title="Reports">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                <span>Reports</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-btn" title="Logout">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span>Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ══════════ MAIN CONTENT ══════════ -->
+    <div class="main-content">
+
+        <!-- Top Bar -->
+        <div class="topbar">
+            <div class="topbar-left">
+                <h1>Welcome back, {{ session.name }} 👋</h1>
+                <p>Here's an overview of the clinic today.</p>
+            </div>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg width="24" height="24" fill="none" stroke="#764ba2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="stat-number">{{ total_appointments }}</div>
+                    <div class="stat-label">Total Appointments</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg width="24" height="24" fill="none" stroke="#764ba2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="stat-number">{{ total_patients }}</div>
+                    <div class="stat-label">Registered Patients</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Appointments (full width) -->
+        <div style="margin-bottom: 24px;">
+            <h2 class="section-title"><span class="dot"></span> Today's Appointments</h2>
+            {% if today_appointments %}
+            <div class="appt-list">
+                {% for appt in today_appointments %}
+                <div class="appt-item">
+                    <div class="appt-item-info">
+                        <div class="name">{{ appt.patient_name }} → Dr. {{ appt.dentist_name }}</div>
+                        <div class="meta">⏰ {{ appt.appointment_time }}</div>
+                    </div>
+                    {% if appt.status == 'approved' %}
+                        <span class="badge badge-approved">Approved</span>
+                    {% elif appt.status == 'booked' %}
+                        <span class="badge badge-booked">Awaiting</span>
+                    {% else %}
+                        <span class="badge badge-cancelled">Cancelled</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">📅 No appointments scheduled for today</div>
+            {% endif %}
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-grid">
+
+            <!-- Pie Chart: Appointment Status Breakdown -->
+            <div class="chart-card">
+                <div class="chart-card-title">
+                    <span class="dot"></span> Appointment Status Breakdown
+                </div>
+                <div style="position: relative; height: 260px; display: flex; align-items: center; justify-content: center;">
+                    <canvas id="statusPieChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Bar Chart: Appointments Per Month -->
+            <div class="chart-card">
+                <div class="chart-card-title">
+                    <span class="dot" style="background:#5a2d82;"></span> Appointments Per Month ({{ current_year }})
+                </div>
+                <div style="position: relative; height: 260px;">
+                    <canvas id="monthlyBarChart"></canvas>
+                </div>
+            </div>
+
+        </div><!-- /charts-grid -->
+
+    </div><!-- /main-content -->
+</div><!-- /shell -->
+
+
+<!-- ══════════ APPROVE MODAL ══════════ -->
+<div id="approveModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeApproveModal()">&times;</span>
+        <div style="width: 68px; height: 68px; background: #f0ebfa; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+            <svg width="32" height="32" fill="none" stroke="#764ba2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <h2 style="color: #2d1b4e; font-size: 20px; font-weight: 700; margin: 0 0 10px;">Approve Appointment?</h2>
+        <p style="color: #8b7aaa; font-size: 14px; line-height: 1.6; margin: 0 0 28px;">This will confirm the appointment and notify the patient.</p>
+        <div style="display: flex; gap: 12px;">
+            <button onclick="closeApproveModal()"
+                style="flex:1; padding:12px; background:#f4f1f9; color:#764ba2; border:1.5px solid #e0d5f0; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; transition:background 0.2s;"
+                onmouseover="this.style.background='#ede8f5'" onmouseout="this.style.background='#f4f1f9'">
+                Cancel
+            </button>
+            <button onclick="confirmApprove()"
+                style="flex:1; padding:12px; background:linear-gradient(135deg,#764ba2,#5a2d82); color:white; border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; box-shadow:0 4px 14px rgba(118,75,162,0.3); transition:transform 0.2s,box-shadow 0.2s;"
+                onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(118,75,162,0.42)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 14px rgba(118,75,162,0.3)'">
+                Yes, Approve
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let approveUrl = null;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.approve-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                approveUrl = btn.dataset.approveUrl;
+                document.getElementById('approveModal').classList.add('active');
+            });
+        });
+
+        // ── Pie Chart: Status Breakdown ──
+        const statusData = {
+            approved:  {{ status_counts.approved }},
+            booked:    {{ status_counts.booked }},
+            cancelled: {{ status_counts.cancelled }}
+        };
+
+        new Chart(document.getElementById('statusPieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Approved', 'Awaiting Approval', 'Cancelled'],
+                datasets: [{
+                    data: [statusData.approved, statusData.booked, statusData.cancelled],
+                    backgroundColor: ['#764ba2', '#ffc107', '#f5576c'],
+                    borderColor: ['#ffffff', '#ffffff', '#ffffff'],
+                    borderWidth: 3,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 16,
+                            font: { size: 12, family: "'Segoe UI', sans-serif" },
+                            color: '#2d1b4e'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = total > 0 ? Math.round((context.parsed / total) * 100) : 0;
+                                return ` ${context.label}: ${context.parsed} (${pct}%)`;
+                            }
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+
+        // ── Bar Chart: Appointments Per Month ──
+        const monthlyData = {{ monthly_counts | tojson }};
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+        new Chart(document.getElementById('monthlyBarChart'), {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Appointments',
+                    data: monthlyData,
+                    backgroundColor: 'rgba(118, 75, 162, 0.15)',
+                    borderColor: '#764ba2',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                    hoverBackgroundColor: 'rgba(118, 75, 162, 0.35)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.parsed.y} appointment${context.parsed.y !== 1 ? 's' : ''}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#8b7aaa', font: { size: 11, family: "'Segoe UI', sans-serif" } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(118,75,162,0.07)' },
+                        ticks: {
+                            color: '#8b7aaa',
+                            font: { size: 11, family: "'Segoe UI', sans-serif" },
+                            stepSize: 1,
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+    function closeApproveModal() {
+        document.getElementById('approveModal').classList.remove('active');
+        approveUrl = null;
+    }
+
+    function confirmApprove() {
+        if (approveUrl) window.location.href = approveUrl;
+    }
+
+    // ── Sidebar Toggle ──
+    const STORAGE_KEY = 'uhdc_sidebar_collapsed';
+    const shell   = document.querySelector('.shell');
+    const sidebar = document.getElementById('sidebar');
+
+    function toggleSidebar() {
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        shell.classList.toggle('sidebar-collapsed', isCollapsed);
+        localStorage.setItem(STORAGE_KEY, isCollapsed ? 'true' : 'false');
+    }
+
+    (function () {
+        if (localStorage.getItem(STORAGE_KEY) === 'true') {
+            sidebar.classList.add('collapsed');
+            shell.classList.add('sidebar-collapsed');
+        }
+    })();
+</script>
+
+{% endblock %}

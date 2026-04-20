@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-hero">
+    <div class="dashboard-wrapper">
+        <div class="dashboard-tabs">
+            <a href="/patient" class="{% if active_tab == 'dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/my-appointments" class="{% if active_tab == 'appointments' %}active{% endif %}">View My Appointments</a>
+        </div>
+        <div class="dashboard-content">
+            {% block dashboard_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+<!-- ══════════ NOTIFICATION MODAL ══════════ -->
+<div id="notificationModal" class="modal {% if has_new_notifications %}active{% endif %}">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeNotificationModal()">&times;</span>
+        <h2 style="color: #764ba2; margin-top: 0;">Notifications</h2>
+
+        <div style="padding: 10px 0; max-height: 420px; overflow-y: auto;">
+            {% if notifications %}
+                {% for notif in notifications %}
+                <div style="padding: 14px; background: {% if not notif.is_read %}#f0f0ff{% else %}#f9f9f9{% endif %}; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid {% if notif.type == 'approved' %}#28a745{% elif notif.type == 'reschedule' %}#f39c12{% else %}#f5576c{% endif %};">
+
+                    {% if notif.type == 'approved' %}
+                        <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.5;">
+                            ✅ Your appointment for <strong>{{ notif.formatted_date }}</strong> at <strong>{{ notif.formatted_time }}</strong> with <strong>{{ notif.dentist_name }}</strong> has been <span style="color: #28a745; font-weight: 700;">approved</span>.
+                        </p>
+
+                    {% elif notif.type == 'reschedule' %}
+                        <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.5;">
+                            📅 <strong>{{ notif.dentist_name }}</strong> has requested that you reschedule your appointment on <strong>{{ notif.formatted_date }}</strong> at <strong>{{ notif.formatted_time }}</strong>.
+                            Please <span style="color: #f39c12; font-weight: 700;">book a new appointment</span> at your convenience.
+                        </p>
+                        {% if notif.window_from or notif.window_to %}
+                        <p style="margin: 8px 0 0; font-size: 13px; color: #856404; background: #fffdf0; border: 1px solid #ffeaa0; border-radius: 7px; padding: 8px 12px; line-height: 1.5;">
+                            🗓️ <strong>Suggested window:</strong>
+                            {% if notif.window_from and notif.window_to %}
+                                {{ notif.window_from }} — {{ notif.window_to }}
+                            {% elif notif.window_from %}
+                                From {{ notif.window_from }}
+                            {% else %}
+                                Before {{ notif.window_to }}
+                            {% endif %}
+                        </p>
+                        {% endif %}
+
+                    {% elif notif.type == 'cancelled' %}
+                        <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.5;">
+                            ❌ Your appointment for <strong>{{ notif.formatted_date }}</strong> at <strong>{{ notif.formatted_time }}</strong> with <strong>{{ notif.dentist_name }}</strong> has been <span style="color: #f5576c; font-weight: 700;">cancelled</span>.
+                        </p>
+
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                {% if unread_count > 0 %}
+                <form method="POST" action="{{ url_for('mark_notifications_read') }}" style="margin-top: 16px;">
+                    <button type="submit" style="width: 100%; background: #764ba2; color: white; padding: 11px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 14px;">
+                        Mark All as Read
+                    </button>
+                </form>
+                {% endif %}
+            {% else %}
+                <p style="color: #999; text-align: center; padding: 20px 0;">No notifications yet</p>
+            {% endif %}
+        </div>
+    </div>
+</div>

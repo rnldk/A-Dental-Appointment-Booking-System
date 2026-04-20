@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}My Appointments{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/patient_appointments.css') }}">
+
+<div class="shell">
+
+    <aside class="sidebar" id="sidebar">
+
+        <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+            <span class="toggle-arrow">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            </span>
+        </button>
+
+        <div class="sidebar-logo">
+            <img src="/static/images/upperhill-logo.jpg" alt="Upper Hill Dental Centre" class="sidebar-logo-img">
+        </div>
+
+        <div class="sidebar-profile">
+            <div class="profile-avatar">{{ session.name[0]|upper }}</div>
+            <div class="profile-info">
+                <div class="profile-name">{{ session.name }}</div>
+                <div class="profile-role">Patient</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-label">Menu</div>
+
+            <a href="{{ url_for('patient_dashboard') }}" class="nav-link" title="Dashboard">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="{{ url_for('patient_appointments') }}" class="nav-link active" title="My Appointments">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>My Appointments</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-btn" title="Logout">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span>Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="main-content">
+
+        <div class="topbar">
+            <div class="topbar-left">
+                <h1>My Appointments</h1>
+                <p>View, edit or cancel your scheduled appointments.</p>
+            </div>
+            <a href="{{ url_for('patient_dashboard') }}" class="book-btn">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Book New Appointment
+            </a>
+        </div>
+
+        <div class="notice-banner">
+            🟣 Please wait for your appointment status to change to <strong>Approved</strong> before making any arrangements.
+        </div>
+
+        <div class="table-card">
+            <table class="appt-table">
+                <thead>
+                    <tr>
+                        <th>Dentist</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for appt in appointments %}
+                    <tr>
+                        <td><strong>{{ appt.dentist_name }}</strong></td>
+                        <td>{{ appt.appointment_date }}</td>
+                        <td>{{ appt.appointment_time }}</td>
+                        <td>
+                            {% if appt.status == 'approved' %}
+                                <span class="badge badge-approved">Approved</span>
+                            {% elif appt.status == 'cancelled' %}
+                                <span class="badge badge-cancelled">Cancelled</span>
+                            {% else %}
+                                <span class="badge badge-booked">Awaiting Approval</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if appt.status == 'cancelled' %}
+                                <span style="color:#ccc;">—</span>
+                            {% elif appt.is_past %}
+                                <span class="date-passed">Date Passed</span>
+                            {% else %}
+                                <button
+                                    data-appointment-id="{{ appt.appointment_id }}"
+                                    class="btn-edit edit-btn">
+                                    ✏️ Edit
+                                </button>
+                                <button
+                                    class="btn-cancel cancel-btn"
+                                    data-cancel-url="{{ url_for('patient_cancel_appointment', appointment_id=appt.appointment_id) }}">
+                                    ✕ Cancel
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div></div><div id="editModal" class="modal">
+    <div class="modal-content" style="padding: 40px 35px;">
+        <span class="close-modal" onclick="closeEditModal()">&times;</span>
+
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 24px;">
+            <div style="width: 46px; height: 46px; background: #f0ebfa; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg width="22" height="22" fill="none" stroke="#764ba2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+            </div>
+            <div>
+                <h2 style="color: #2d1b4e; font-size: 20px; margin: 0 0 3px;">Edit Appointment</h2>
+                <p style="color: #8b7aaa; font-size: 13px; margin: 0;">Update your preferred date and time</p>
+            </div>
+        </div>
+
+        {% if session.get('edit_error') %}
+        <div class="error-message">{{ session.pop('edit_error') }}</div>
+        {% endif %}
+
+        <form id="editForm" method="POST">
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #764ba2; margin-bottom: 7px;">New Date</label>
+                <input type="date" name="appointment_date" id="appointmentDate" required
+                    style="width: 100%; padding: 11px 14px; border: 1.5px solid #e0d5f0; border-radius: 10px; font-size: 14px; color: #2d1b4e; background: #faf8fe; box-sizing: border-box; outline: none; transition: border-color 0.2s, box-shadow 0.2s;"
+                    onfocus="this.style.borderColor='#764ba2';this.style.boxShadow='0 0 0 3px rgba(118,75,162,0.12)'"
+                    onblur="this.style.borderColor='#e0d5f0';this.style.boxShadow='none'">
+            </div>
+
+            <div style="margin-bottom: 28px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #764ba2; margin-bottom: 7px;">New Time</label>
+                <input type="time" name="appointment_time" id="appointmentTime" required
+                    style="width: 100%; padding: 11px 14px; border: 1.5px solid #e0d5f0; border-radius: 10px; font-size: 14px; color: #2d1b4e; background: #faf8fe; box-sizing: border-box; outline: none; transition: border-color 0.2s, box-shadow 0.2s;"
+                    onfocus="this.style.borderColor='#764ba2';this.style.boxShadow='0 0 0 3px rgba(118,75,162,0.12)'"
+                    onblur="this.style.borderColor='#e0d5f0';this.style.boxShadow='none'">
+            </div>
+
+            <button type="submit"
+                style="width: 100%; padding: 13px; background: linear-gradient(135deg, #764ba2, #5a2d82); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: 0 4px 14px rgba(118,75,162,0.3); transition: transform 0.2s, box-shadow 0.2s;"
+                onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(118,75,162,0.42)'"
+                onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 14px rgba(118,75,162,0.3)'">
+                Update Appointment
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="cancelModal" class="modal">
+    <div class="modal-content" style="text-align: center; padding: 40px 35px;">
+        <span class="close-modal" onclick="closeCancelModal()">&times;</span>
+
+        <div style="width: 68px; height: 68px; background: #f8d7da; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+            <svg width="32" height="32" fill="none" stroke="#c0392b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+        </div>
+
+        <h2 style="color: #2d1b4e; font-size: 20px; margin: 0 0 10px;">Cancel Appointment?</h2>
+        <p style="color: #8b7aaa; font-size: 14px; line-height: 1.6; margin: 0 0 28px;">
+            Are you sure you want to cancel this appointment?<br>
+            <strong style="color: #2d1b4e;">This action cannot be undone.</strong>
+        </p>
+
+        <div style="display: flex; gap: 12px;">
+            <button onclick="closeCancelModal()" style="flex: 1; padding: 12px; background: #f4f1f9; color: #764ba2; border: 1.5px solid #e0d5f0; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; transition: background 0.2s;"
+                onmouseover="this.style.background='#ede8f5'" onmouseout="this.style.background='#f4f1f9'">
+                Keep It
+            </button>
+            <button onclick="confirmCancel()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(231,76,60,0.3); transition: transform 0.2s, box-shadow 0.2s;"
+                onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(231,76,60,0.42)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 14px rgba(231,76,60,0.3)'">
+                Yes, Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="successModal" class="success-modal {% if session.pop('show_booking_success_modal', None) or session.pop('edit_success', None) %}active{% endif %}">
+    <div class="success-modal-content" style="padding: 44px 36px; text-align: center;">
+
+        <div style="width: 72px; height: 72px; background: linear-gradient(135deg, #764ba2, #5a2d82); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 22px; box-shadow: 0 8px 24px rgba(118,75,162,0.35);">
+            <svg width="34" height="34" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+
+        <h3 id="successModalTitle" style="color: #2d1b4e; font-size: 20px; font-weight: 700; margin: 0 0 10px;">Success!</h3>
+        <p id="successModalMessage" style="color: #8b7aaa; font-size: 14px; line-height: 1.6; margin: 0 0 28px; display: none;"></p>
+
+        <button onclick="closeSuccessModal()"
+            style="padding: 12px 44px; background: linear-gradient(135deg, #764ba2, #5a2d82); color: white; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: 0 4px 14px rgba(118,75,162,0.3); transition: transform 0.2s, box-shadow 0.2s;"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(118,75,162,0.42)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 14px rgba(118,75,162,0.3)'">
+            OK
+        </button>
+    </div>
+</div>
+
+{% if session.get('edit_appointment_id') %}
+<script>window.editAppointmentId = "{{ session.pop('edit_appointment_id') }}";</script>
+{% endif %}
+{% if session.get('show_booking_success_modal') %}
+<script>window.bookingSuccess = true;</script>
+{% endif %}
+{% if session.get('edit_success') %}
+<script>window.editSuccess = true;</script>
+{% endif %}
+
+<!-- ══════════ CHATBOT WIDGET ══════════ -->
+
+<!-- Floating bubble button -->
+<button id="chatbot-bubble" aria-label="Open chat assistant">
+    <svg class="icon-chat" width="24" height="24" fill="none" stroke="white"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+    <svg class="icon-close" width="22" height="22" fill="none" stroke="white"
+         stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+    <span id="chatbot-unread-dot"></span>
+</button>
+
+<div id="chatbot-window" role="dialog" aria-label="Chat with Denta">
+    <div id="chatbot-header">
+        <div class="chatbot-avatar">🦷</div>
+        <div class="chatbot-header-info">
+            <div class="chatbot-header-name">Denta — UHDC Assistant</div>
+            <div class="chatbot-header-status">Online now</div>
+        </div>
+    </div>
+    <div id="chatbot-messages"></div>
+    <div id="chatbot-input-row">
+        <input type="text" id="chatbot-input" placeholder="Ask me anything…"
+               autocomplete="off" maxlength="200">
+        <button id="chatbot-send" aria-label="Send message">
+            <svg width="16" height="16" fill="none" stroke="white" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+        </button>
+    </div>
+</div>
+<!-- ══════════ END CHATBOT WIDGET ══════════ -->
+
+<script src="{{ url_for('static', filename='js/appointments.js') }}"></script>
+<script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+{% endblock %}
+

@@ -1,0 +1,671 @@
+{% extends "base.html" %}
+{% block title %}My Reports{% endblock %}
+{% block content %}
+
+<style>
+    body { margin: 0; }
+
+    .shell {
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+        font-family: 'Segoe UI', sans-serif;
+        position: relative;
+    }
+
+    /* ══════════════════════════════
+       SIDEBAR
+    ══════════════════════════════ */
+    .sidebar-logo {
+        display: flex; align-items: center; justify-content: center;
+        padding: 18px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        flex-shrink: 0; background: rgba(255,255,255,0.06);
+    }
+    .sidebar-logo-img {
+        width: 100%; max-width: 180px; height: auto;
+        object-fit: contain; border-radius: 6px;
+        transition: max-width 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .sidebar.collapsed .sidebar-logo { padding: 14px 8px; }
+    .sidebar.collapsed .sidebar-logo-img { max-width: 40px; border-radius: 8px; }
+
+    .sidebar {
+        width: 260px; min-width: 260px; flex-shrink: 0;
+        background: linear-gradient(180deg, #3b1f5e 0%, #5a2d82 60%, #764ba2 100%);
+        display: flex; flex-direction: column;
+        height: 100%; overflow: hidden;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.25);
+        z-index: 10;
+        transition: width 0.3s cubic-bezier(0.4,0,0.2,1), min-width 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .sidebar.collapsed { width: 64px; min-width: 64px; }
+
+    .nav-link span, .logout-btn span, .profile-info, .nav-label {
+        transition: opacity 0.2s ease, max-width 0.3s ease;
+        overflow: hidden; white-space: nowrap; max-width: 200px;
+    }
+    .sidebar.collapsed .profile-info,
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .nav-link span,
+    .sidebar.collapsed .logout-btn span { opacity: 0; max-width: 0; }
+    .sidebar.collapsed .sidebar-profile { justify-content: center; padding: 20px 8px; gap: 0; }
+    .sidebar.collapsed .nav-link        { justify-content: center; padding: 11px 0; gap: 0; }
+    .sidebar.collapsed .logout-btn      { justify-content: center; padding: 11px 0; gap: 0; }
+    .sidebar.collapsed .sidebar-nav     { padding: 20px 8px; align-items: center; }
+    .sidebar.collapsed .sidebar-footer  { display: flex; justify-content: center; }
+
+    .sidebar-toggle {
+        position: absolute; top: 22px; left: 246px;
+        width: 28px; height: 28px;
+        background: white; border: none; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+        z-index: 20; padding: 0;
+        transition: left 0.3s cubic-bezier(0.4,0,0.2,1), transform 0.2s;
+    }
+    .sidebar-toggle:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.3); transform: scale(1.1); }
+    .shell.sidebar-collapsed .sidebar-toggle { left: 50px; }
+    .toggle-arrow { display: flex; align-items: center; justify-content: center; color: #764ba2; transition: transform 0.3s ease; }
+    .shell.sidebar-collapsed .toggle-arrow { transform: rotate(180deg); }
+
+    .sidebar-profile {
+        padding: 22px 20px; border-bottom: 1px solid rgba(255,255,255,0.12);
+        display: flex; align-items: center; gap: 14px;
+    }
+    .profile-avatar {
+        width: 50px; height: 50px; background: rgba(255,255,255,0.18);
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-size: 22px; font-weight: 700; color: white;
+        border: 2px solid rgba(255,255,255,0.35); flex-shrink: 0;
+    }
+    .profile-name { color: white; font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .profile-role { color: rgba(255,255,255,0.6); font-size: 12px; margin-top: 2px; }
+
+    .sidebar-nav { flex: 1; padding: 20px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .nav-label { font-size: 10px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,0.4); padding: 10px 10px 6px; }
+    .nav-link {
+        display: flex; align-items: center; gap: 12px;
+        padding: 11px 14px; border-radius: 10px;
+        color: rgba(255,255,255,0.75); text-decoration: none;
+        font-size: 14px; font-weight: 500;
+        transition: background 0.2s, color 0.2s, transform 0.15s;
+    }
+    .nav-link:hover { background: rgba(255,255,255,0.1); color: white; transform: translateX(3px); }
+    .nav-link.active { background: rgba(255,255,255,0.18); color: white; font-weight: 700; box-shadow: inset 3px 0 0 #e6b7c6; }
+    .nav-link svg { flex-shrink: 0; opacity: 0.85; }
+
+    .sidebar-footer { padding: 16px 12px; border-top: 1px solid rgba(255,255,255,0.12); }
+    .logout-btn {
+        display: flex; align-items: center; gap: 12px;
+        padding: 11px 14px; border-radius: 10px;
+        color: rgba(255,255,255,0.65); text-decoration: none;
+        font-size: 14px; font-weight: 500;
+        width: 100%; background: transparent; border: none; cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+    }
+    .logout-btn:hover { background: rgba(245,87,108,0.2); color: #f5aab5; }
+
+    /* ══════════════════════════════
+       MAIN CONTENT
+    ══════════════════════════════ */
+    .main-content {
+        flex: 1; background: #f4f1f9;
+        height: 100%; overflow-y: auto;
+        padding: 30px 36px 50px;
+        min-width: 0; box-sizing: border-box;
+    }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .topbar-left h1 { margin: 0; font-size: 24px; font-weight: 700; color: #2d1b4e; }
+    .topbar-left p  { margin: 4px 0 0; color: #8b7aaa; font-size: 14px; }
+
+    /* Create button */
+    .btn-create {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 11px 20px;
+        background: linear-gradient(135deg, #764ba2, #5a2d82); color: white;
+        border-radius: 10px; text-decoration: none;
+        font-weight: 700; font-size: 14px;
+        box-shadow: 0 4px 14px rgba(118,75,162,0.3);
+        transition: transform 0.2s, box-shadow 0.2s;
+        white-space: nowrap;
+    }
+    .btn-create:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(118,75,162,0.42); }
+
+    /* Flash success */
+    .flash-success {
+        background: #e8f5e9; color: #2e7d32;
+        border-left: 4px solid #43a047;
+        padding: 12px 16px; border-radius: 10px;
+        font-size: 13px; margin-bottom: 22px;
+    }
+
+    /* Report cards grid */
+    .reports-grid { display: grid; gap: 18px; }
+
+    /* Card header */
+    .report-card-header {
+        display: flex; justify-content: space-between;
+        align-items: flex-start; margin-bottom: 14px;
+        gap: 12px;
+    }
+    .report-patient-name {
+        font-size: 17px; font-weight: 700; color: #2d1b4e; margin: 0 0 4px;
+    }
+    .report-date { font-size: 12px; color: #8b7aaa; }
+
+    .report-badges { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .badge-service    { background: #f0ebfa; color: #764ba2; }
+    .badge-completed  { background: #d4edda; color: #155724; }
+    .badge-incomplete { background: #f8d7da; color: #721c24; }
+
+    /* Appointment info strip */
+    .appt-info-strip {
+        background: #f4f1f9; border-radius: 8px;
+        padding: 10px 14px; margin-bottom: 14px;
+        font-size: 13px; color: #5a3a80;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .appt-info-strip svg { flex-shrink: 0; opacity: 0.7; }
+
+    /* Report details */
+    .report-details {
+        border-top: 1px solid #f0ebfa; padding-top: 14px;
+        font-size: 14px; color: #444; line-height: 1.7;
+        white-space: pre-wrap; overflow-wrap: break-word;
+        word-break: break-word; margin: 0;
+    }
+
+    .report-card {
+        background: white; border-radius: 14px;
+        padding: 22px 24px;
+        box-shadow: 0 4px 16px rgba(118,75,162,0.08);
+        border-left: 4px solid #764ba2;
+        overflow: hidden;
+        contain: layout;
+        transition: box-shadow 0.2s;
+    }
+    .report-card:hover { box-shadow: 0 8px 24px rgba(118,75,162,0.16); }
+
+    /* Report card action buttons */
+    .report-card-actions {
+        display: flex; gap: 8px;
+        margin-top: 16px; padding-top: 14px;
+        border-top: 1px solid #f0ebfa;
+        justify-content: flex-end;
+    }
+    .btn-edit-report {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 16px; background: #f0ebfa; color: #764ba2;
+        border: 1.5px solid #e0d5f0; border-radius: 8px;
+        font-size: 13px; font-weight: 700; cursor: pointer;
+        transition: background 0.2s, transform 0.15s;
+        border: none;
+    }
+    .btn-edit-report:hover { background: #ede8f5; transform: translateY(-1px); }
+
+    .btn-delete-report {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 16px; background: #f8d7da; color: #721c24;
+        border: none; border-radius: 8px;
+        font-size: 13px; font-weight: 700; cursor: pointer;
+        transition: background 0.2s, transform 0.15s;
+    }
+    .btn-delete-report:hover { background: #f5c6cb; transform: translateY(-1px); }
+
+    /* Modals */
+    .modal {
+        display: none; position: fixed; z-index: 1000;
+        left: 0; top: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.55);
+        animation: fadeIn 0.25s ease;
+    }
+    .modal.active { display: flex; justify-content: center; align-items: center; }
+
+    .modal-content {
+        background: white; border-radius: 16px;
+        width: 90%; max-width: 500px;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        animation: slideUp 0.3s ease; position: relative;
+        overflow: hidden;
+    }
+
+    .modal-header {
+        display: flex; align-items: center; gap: 14px;
+        padding: 24px 28px 20px;
+        border-bottom: 1px solid #f0ebfa;
+    }
+    .modal-header-icon {
+        width: 42px; height: 42px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .modal-header h2 { margin: 0 0 2px; font-size: 18px; font-weight: 700; color: #2d1b4e; }
+    .modal-header p  { margin: 0; font-size: 13px; color: #8b7aaa; }
+
+    .modal-body { padding: 22px 28px; }
+
+    .close-modal {
+        position: absolute; top: 14px; right: 18px;
+        font-size: 24px; font-weight: bold; color: #aaa; cursor: pointer;
+        line-height: 1; transition: color 0.2s;
+    }
+    .close-modal:hover { color: #333; }
+
+    /* Edit form fields inside modal */
+    .modal-form-group { margin-bottom: 18px; }
+    .modal-form-group label {
+        display: block; font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.8px;
+        color: #764ba2; margin-bottom: 7px;
+    }
+    .modal-form-group select,
+    .modal-form-group textarea {
+        width: 100%; padding: 11px 14px;
+        border: 1.5px solid #e0d5f0; border-radius: 10px;
+        font-size: 14px; color: #2d1b4e; background: #faf8fe;
+        box-sizing: border-box; outline: none;
+        font-family: 'Segoe UI', sans-serif;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        appearance: auto;
+    }
+    .modal-form-group select:focus,
+    .modal-form-group textarea:focus {
+        border-color: #764ba2;
+        box-shadow: 0 0 0 3px rgba(118,75,162,0.12);
+        background: white;
+    }
+    .modal-form-group textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
+
+    .modal-actions { display: flex; gap: 12px; padding: 0 28px 24px; }
+    .modal-btn-ghost {
+        flex: 1; padding: 12px; background: #f4f1f9; color: #764ba2;
+        border: 1.5px solid #e0d5f0; border-radius: 10px;
+        font-weight: 700; font-size: 14px; cursor: pointer;
+        transition: background 0.2s;
+    }
+    .modal-btn-ghost:hover { background: #ede8f5; }
+    .modal-btn-primary {
+        flex: 1; padding: 12px;
+        background: linear-gradient(135deg, #764ba2, #5a2d82); color: white;
+        border: none; border-radius: 10px;
+        font-weight: 700; font-size: 14px; cursor: pointer;
+        box-shadow: 0 4px 14px rgba(118,75,162,0.3);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .modal-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(118,75,162,0.42); }
+    .modal-btn-danger {
+        flex: 1; padding: 12px;
+        background: linear-gradient(135deg, #e74c3c, #c0392b); color: white;
+        border: none; border-radius: 10px;
+        font-weight: 700; font-size: 14px; cursor: pointer;
+        box-shadow: 0 4px 14px rgba(231,76,60,0.3);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .modal-btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(231,76,60,0.42); }
+
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        background: white; border-radius: 14px;
+        padding: 50px 24px; text-align: center;
+        box-shadow: 0 4px 16px rgba(118,75,162,0.06);
+        border: 2px dashed #e0d5f0;
+    }
+    .empty-state p { color: #b0a0c8; font-size: 14px; margin: 12px 0 0; }
+
+    @media (max-width: 640px) {
+        .sidebar { display: none; }
+        .main-content { padding: 20px 16px 40px; }
+    }
+</style>
+
+<div class="shell">
+
+    <!-- ══════════ SIDEBAR ══════════ -->
+    <aside class="sidebar" id="sidebar">
+
+        <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+            <span class="toggle-arrow">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            </span>
+        </button>
+
+        <div class="sidebar-logo">
+            <img src="/static/images/upperhill-logo.jpg" alt="Upper Hill Dental Centre" class="sidebar-logo-img">
+        </div>
+
+        <div class="sidebar-profile">
+            <div class="profile-avatar">{{ session.name[0]|upper }}</div>
+            <div class="profile-info">
+                <div class="profile-name">{{ session.name }}</div>
+                <div class="profile-role">Dentist</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-label">Menu</div>
+
+            <a href="{{ url_for('dentist_dashboard') }}" class="nav-link" title="Dashboard">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="{{ url_for('dentist_appointments') }}" class="nav-link" title="My Appointments">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>My Appointments</span>
+            </a>
+
+            <a href="{{ url_for('dentist_reports') }}" class="nav-link active" title="Reports">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                <span>Reports</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{{ url_for('logout') }}" class="logout-btn" title="Logout">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span>Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ══════════ MAIN CONTENT ══════════ -->
+    <div class="main-content">
+
+        <div class="topbar">
+            <div class="topbar-left">
+                <h1>Patient Reports</h1>
+                <p>View and manage all your patient consultation reports.</p>
+            </div>
+            <a href="{{ url_for('create_report') }}" class="btn-create">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Create New Report
+            </a>
+        </div>
+
+        {% if session.get('report_success') %}
+        <div class="flash-success">✅ {{ session.pop('report_success') }}</div>
+        {% endif %}
+
+        {% if reports %}
+        <div class="reports-grid">
+            {% for report in reports %}
+            <div class="report-card">
+
+                <!-- Card Header -->
+                <div class="report-card-header">
+                    <div>
+                        <h3 class="report-patient-name">{{ report.patient_name }}</h3>
+                        <div class="report-date">📅 {{ report.created_date }}</div>
+                    </div>
+                    <div class="report-badges">
+                        <span class="badge badge-service">{{ report.service }}</span>
+                        {% if report.appointment_status == 'Completed' %}
+                            <span class="badge badge-completed">Completed</span>
+                        {% else %}
+                            <span class="badge badge-incomplete">{{ report.appointment_status }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Appointment info -->
+                {% if report.appointment_info %}
+                <div class="appt-info-strip">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    <span><strong>Appointment:</strong> {{ report.appointment_info }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Details -->
+                <p class="report-details">{{ report.details }}</p>
+
+                <!-- Action buttons -->
+                <div class="report-card-actions">
+                    <button class="btn-edit-report"
+                        data-report-id="{{ report.id }}"
+                        data-service="{{ report.service }}"
+                        data-status="{{ report.appointment_status }}"
+                        data-details="{{ report.details | e }}">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        Edit
+                    </button>
+                    <button class="btn-delete-report"
+                        data-report-id="{{ report.id }}"
+                        data-patient-name="{{ report.patient_name }}">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6"/>
+                            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                        </svg>
+                        Delete
+                    </button>
+                </div>
+            </div><!-- /report-card -->
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="empty-state">
+            <svg width="44" height="44" fill="none" stroke="#764ba2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="margin: 0 auto; display: block; opacity: 0.35;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            <p>No reports created yet.<br>Click <strong>Create New Report</strong> to get started.</p>
+        </div>
+        {% endif %}
+
+    </div><!-- /main-content -->
+</div><!-- /shell -->
+
+<!-- ══════════ EDIT REPORT MODAL ══════════ -->
+<div id="editReportModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeEditModal()">&times;</span>
+
+        <div class="modal-header">
+            <div class="modal-header-icon" style="background: #f0ebfa;">
+                <svg width="20" height="20" fill="none" stroke="#764ba2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Edit Report</h2>
+                <p>Update service, status or details below.</p>
+            </div>
+        </div>
+
+        <form id="editReportForm" method="POST">
+            <div class="modal-body">
+                <div class="modal-form-group">
+                    <label>Service</label>
+                    <select name="service" id="editService" required>
+                        <option value="Bridges">Bridges</option>
+                        <option value="Composite Fillings">Composite Fillings</option>
+                        <option value="Cosmetic Dentistry">Cosmetic Dentistry</option>
+                        <option value="Crowns">Crowns</option>
+                        <option value="Implants">Implants</option>
+                        <option value="Dental Therapy">Dental Therapy</option>
+                        <option value="Dentures">Dentures</option>
+                        <option value="Facial Rejuvenation">Facial Rejuvenation</option>
+                        <option value="Fissure Sealants">Fissure Sealants</option>
+                        <option value="General Dentistry">General Dentistry</option>
+                        <option value="Gold Inlays">Gold Inlays</option>
+                        <option value="Gum Disease">Gum Disease</option>
+                        <option value="Hygienist">Hygienist</option>
+                        <option value="Inter-Dental Brushing">Inter-Dental Brushing</option>
+                        <option value="Pediatric Dentistry">Pediatric Dentistry</option>
+                        <option value="Porcelain Inlays">Porcelain Inlays</option>
+                        <option value="Preventive Dentistry">Preventive Dentistry</option>
+                        <option value="Root Canal Treatment">Root Canal Treatment</option>
+                        <option value="Sedation">Sedation</option>
+                        <option value="Smile MakeOver">Smile MakeOver</option>
+                        <option value="Teeth Whitening">Teeth Whitening</option>
+                        <option value="Veneers">Veneers</option>
+                        <option value="Wisdom Teeth">Wisdom Teeth</option>
+                    </select>
+                </div>
+
+                <div class="modal-form-group">
+                    <label>Appointment Status</label>
+                    <select name="appointment_status" id="editStatus" required>
+                        <option value="Completed">Completed</option>
+                        <option value="No-show">No-show</option>
+                    </select>
+                </div>
+
+                <div class="modal-form-group">
+                    <label>Details</label>
+                    <textarea name="details" id="editDetails" required></textarea>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" onclick="closeEditModal()" class="modal-btn-ghost">Cancel</button>
+                <button type="submit" class="modal-btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══════════ DELETE REPORT MODAL ══════════ -->
+<div id="deleteReportModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeDeleteModal()">&times;</span>
+
+        <div class="modal-header">
+            <div class="modal-header-icon" style="background: #f8d7da;">
+                <svg width="20" height="20" fill="none" stroke="#c0392b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6M14 11v6"/>
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Delete Report?</h2>
+                <p id="deleteReportDesc">This action cannot be undone.</p>
+            </div>
+        </div>
+
+        <div class="modal-body" style="padding-bottom: 4px;">
+            <p style="color: #8b7aaa; font-size: 14px; margin: 0; line-height: 1.6;">
+                Are you sure you want to permanently delete the report for
+                <strong id="deletePatientName" style="color: #2d1b4e;"></strong>?
+            </p>
+        </div>
+
+        <div class="modal-actions">
+            <button onclick="closeDeleteModal()" class="modal-btn-ghost">Cancel</button>
+            <a id="deleteConfirmBtn" href="#" class="modal-btn-danger" style="flex:1; display:flex; align-items:center; justify-content:center; text-decoration:none; border-radius:10px; font-weight:700; font-size:14px;">
+                Yes, Delete
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── Sidebar Toggle ──
+    const STORAGE_KEY = 'uhdc_sidebar_collapsed';
+    const shell   = document.querySelector('.shell');
+    const sidebar = document.getElementById('sidebar');
+
+    function toggleSidebar() {
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        shell.classList.toggle('sidebar-collapsed', isCollapsed);
+        localStorage.setItem(STORAGE_KEY, isCollapsed ? 'true' : 'false');
+    }
+
+    (function () {
+        if (localStorage.getItem(STORAGE_KEY) === 'true') {
+            sidebar.classList.add('collapsed');
+            shell.classList.add('sidebar-collapsed');
+        }
+    })();
+
+    // ── Bind edit buttons via data attributes ──
+    document.querySelectorAll('.btn-edit-report').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id      = this.dataset.reportId;
+            const service = this.dataset.service;
+            const status  = this.dataset.status;
+            const details = this.dataset.details;
+            openEditModal(id, service, status, details);
+        });
+    });
+
+    // ── Bind delete buttons via data attributes ──
+    document.querySelectorAll('.btn-delete-report').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id   = this.dataset.reportId;
+            const name = this.dataset.patientName;
+            openDeleteModal(id, name);
+        });
+    });
+
+    // ── Edit Modal ──
+    function openEditModal(reportId, service, status, details) {
+        document.getElementById('editReportForm').action = `/dentist/edit-report/${reportId}`;
+        document.getElementById('editService').value   = service;
+        document.getElementById('editStatus').value    = status;
+        document.getElementById('editDetails').value   = details;
+        document.getElementById('editReportModal').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editReportModal').classList.remove('active');
+    }
+
+    // ── Delete Modal ──
+    function openDeleteModal(reportId, patientName) {
+        document.getElementById('deletePatientName').textContent = patientName;
+        document.getElementById('deleteConfirmBtn').href = `/dentist/delete-report/${reportId}`;
+        document.getElementById('deleteReportModal').classList.add('active');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteReportModal').classList.remove('active');
+    }
+
+    // Close on backdrop click
+    window.addEventListener('click', function(e) {
+        ['editReportModal', 'deleteReportModal'].forEach(id => {
+            const m = document.getElementById(id);
+            if (e.target === m) m.classList.remove('active');
+        });
+    });
+</script>
+
+{% endblock %}

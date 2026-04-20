@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<h2>System Users</h2>
+
+<table border="1" cellpadding="5">
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+    </tr>
+
+    {% for user in users %}
+    <tr>
+        <td>{{ user[0] }}</td>
+        <td>{{ user[1] }}</td>
+        <td>{{ user[2] }}</td>
+        <td>{{ user[3] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
