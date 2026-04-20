@@ -260,6 +260,36 @@ http://127.0.0.1:5000
 
 ---
 
+## Screenshots
+
+### Login Page
+
+![Login Page](Screenshots/login.png)
+
+### Patient Dashboard
+
+![Patient Dashboard](Screenshots/patient_dashboard.png)
+
+### Dentist Dashboard
+
+![Dentist Dashboard](Screenshots/dentist_dashbaord.png)
+
+### Admin Dashboard
+
+![Admin Dashboard](Screenshots/admin_dashboard.png)
+
+### Appointments Pages
+
+#### Patient
+![Pateint's Appointments Page](Screenshots/patient_appointments.png)
+
+#### Dentist
+![Dentist's Appointments Page](Screenshots/dentist_appointments.png)
+
+#### Admin
+![Admin's Appointments Page](Screenshots/admin_appointments.png)
+
+
 ## Conclusion
 
 The system successfully replaces manual appointment booking with a digital solution that improves efficiency, reduces errors, and enhances patient experience. It demonstrates practical application of Flask, MySQL, and full-stack development in solving real-world healthcare challenges.
