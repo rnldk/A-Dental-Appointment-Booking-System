@@ -136,47 +136,100 @@ Test results confirmed:
 
 ## Installation & Setup
 
-1. Clone the repository:
+### 1. Clone the repository
 
 ```
 git clone https://github.com/rnldk/A-Dental-Appointment-Booking-System.git
 ```
 
-2. Navigate to the project folder:
+### 2. Navigate into the project folder
 
 ```
 cd A-Dental-Appointment-Booking-System
 ```
 
-3. Install dependencies:
+### 3. Create a virtual environment (recommended)
 
 ```
-pip install flask mysql-connector-python
+python -m venv venv
 ```
 
-4. Create MySQL database:
+### 4. Activate the virtual environment
+
+**Windows:**
 
 ```
-dental_booking
+venv\Scripts\activate
 ```
 
-5. Import the SQL file (tables: users, appointments, notifications, reports)
+**Mac/Linux:**
 
-6. Update database connection in `app.py`
+```
+source venv/bin/activate
+```
 
-7. Run the application:
+### 5. Install dependencies
+
+```
+pip install -r requirements.txt
+```
+
+---
+
+### 6. Set up the database
+
+#### Option A: Using the provided SQL file (recommended)
+
+1. Open MySQL
+2. Run the SQL script:
+
+```
+SOURCE sql-queries.sql;
+```
+
+#### Option B: Manual setup
+
+1. Create database:
+
+```
+CREATE DATABASE dental_booking;
+```
+
+2. Use the database:
+
+```
+USE dental_booking;
+```
+
+3. Run the table creation queries from `sql-queries.sql`
+
+---
+
+### 7. Configure database connection
+
+Open `app.py` and update:
+
+* host (usually `localhost`)
+* user (e.g. `root`)
+* password (your MySQL password)
+* database (`dental_booking`)
+
+---
+
+### 8. Run the application
 
 ```
 python app.py
 ```
 
-8. Open in browser:
+---
+
+### 9. Open in browser
 
 ```
 http://127.0.0.1:5000
 ```
 
----
 
 ## Usage
 
